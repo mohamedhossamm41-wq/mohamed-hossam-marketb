@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mody Chat Pro</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; height: 100dvh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .hidden { display: none !important; }
+        
+        #auth-screen {
+            background: #fff; padding: 30px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 90%; max-width: 400px; text-align: center;
+        }
+        #auth-screen h2 { color: #008069; margin-bottom: 10px; }
+        #auth-screen input {
+            width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc;
+            border-radius: 8px; outline: none; font-size: 15px; text-align: right;
+        }
+        #auth-screen button {
+            width: 100%; padding: 12px; background: #008069; color: white; border: none;
+            border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold;
+        }
+
+        #main-screen {
+            width: 100%; max-width: 1200px; height: 100dvh; background: #ffffff;
+            display: flex; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; position: relative;
+        }
+        
+        .sidebar { width: 35%; border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; background: #fff; height: 100%; }
+        .sidebar-header {
+            padding: 12px 15px; background: #008069; color: white; display: flex; justify-content: space-between; align-items: center;
+        }
+        .user-profile { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #fff; flex-shrink: 0; }
+        .sidebar-actions { display: flex; gap: 12px; position: relative; align-items: center; }
+        .sidebar-actions button { background: none; border: none; font-size: 20px; cursor: pointer; color: white; }
+
+        .dropdown-menu {
+            position: absolute; top: 40px; left: 0; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            border-radius: 6px; display: none; flex-direction: column; width: 150px; z-index: 100;
+        }
+        .dropdown-menu.show { display: flex; }
+        .dropdown-menu button { padding: 12px; text-align: right; background: none; border: none; cursor: pointer; font-size: 14px; color: #333; }
+
+        .search-box { padding: 10px; background: #f0f2f5; border-bottom: 1px solid #e2e8f0; }
+        .search-box input { width: 100%; padding: 8px 15px; border-radius: 20px; border: 1px solid #ccc; outline: none; text-align: right; font-size: 14px; }
+
+        .users-list { flex: 1; overflow-y: auto; }
+        .user-item {
+            display: flex; justify-content: space-between; align-items: center; padding: 12px 15px;
+            cursor: pointer; border-bottom: 1px solid #f0f2f5; transition: 0.2s;
+        }
+        .user-item:hover, .user-item.active { background: #f0f2f5; }
+        .user-item-left { display: flex; align-items: center; gap: 12px; overflow: hidden; }
+        .user-item-info { overflow: hidden; }
+        .user-item-info h4 { font-size: 15px; color: #111b21; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-item-info p { font-size: 13px; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .unread-badge { background: #25d366; color: white; border-radius: 50%; padding: 2px 7px; font-size: 11px; font-weight: bold; }
+
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #efeae2; height: 100%; overflow: hidden; }
+        .chat-header {
+            padding: 10px 15px; background: #008069; color: white; display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+        .chat-user-info { display: flex; align-items: center; gap: 10px; }
+        .chat-user-info p { color: #e2e8f0 !important; }
+        #back-btn { display: none; background: none; border: none; color: white; font-size: 20px; cursor: pointer; margin-left: 5px; }
+        .chat-actions button { background: none; border: none; font-size: 18px; cursor: pointer; color: white; }
+
+        .messages-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .msg { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 14px; position: relative; word-break: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .msg.me { background: #d9fdd3; align-self: flex-start; border-top-right-radius: 0; }
+        .msg.other { background: #ffffff; align-self: flex-end; border-top-left-radius: 0; }
+        
+        .chat-input-area { padding: 8px 12px; background: #f0f2f5; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .chat-input-area input { flex: 1; padding: 10px 15px; border-radius: 20px; border: none; outline: none; font-size: 14px; text-align: right; background: #fff; }
+        
+        .chat-input-area button { background: #008069; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+        #mic-btn { background: #54656f; }
+        #mic-btn.recording { background: red; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 350px; text-align: center; }
+        .modal-content input { width: 100%; padding: 10px; margin: 12px 0; border: 1px solid #ccc; border-radius: 6px; text-align: right; }
+        .members-select-list { max-height: 150px; overflow-y: auto; text-align: right; margin-bottom: 15px; border: 1px solid #eee; padding: 8px; }
+        .member-checkbox { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; }
+            .chat-area { display: none; width: 100%; }
+            #main-screen.chat-open .sidebar { display: none; }
+            #main-screen.chat-open .chat-area { display: flex; }
+            #back-btn { display: inline-block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <h2>Mody Chat Pro</h2>
+        <p style="color: #667781; margin-bottom: 20px; font-size: 13px;">اكتب اسمك وكلمة المرور للدخول أو استعادة حسابك</p>
+        <input type="text" id="reg-name" placeholder="الاسم الكامل">
+        <input type="password" id="reg-pass" placeholder="كلمة المرور">
+        <button id="login-btn">دخول / إنشاء حساب</button>
+    </div>
+
+    <div id="main-screen" class="hidden">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-profile">
+                    <img id="my-avatar" class="avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+                    <h4 id="my-name">المستخدم</h4>
+                </div>
+                <div class="sidebar-actions">
+                    <button id="open-group-modal" title="مجموعة جديدة">👥</button>
+                    <button id="menu-dots-btn" title="القائمة">⋮</button>
+                    <div id="dropdown-menu" class="dropdown-menu">
+                        <button id="dropdown-logout">تسجيل الخروج</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" id="search-user" placeholder="بحث عن شخص أو مجموعة...">
+            </div>
+
+            <div id="users-list" class="users-list"></div>
+        </div>
+
+        <div class="chat-area">
+            <div id="no-chat-selected" style="flex:1; display:flex; justify-content:center; align-items:center; color:#667781;">
+                اختر محادثة لبدء الدردشة 💬
+            </div>
+
+            <div id="active-chat" class="hidden" style="display:flex; flex-direction:column; height:100%;">
+                <div class="chat-header">
+                    <div class="chat-user-info">
+                        <button id="back-btn" onclick="document.getElementById('main-screen').classList.remove('chat-open')">➡️</button>
+                        <img id="chat-user-avatar" class="avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+                        <div>
+                            <h4 id="chat-user-name">اسم الشخص</h4>
+                            <p id="chat-user-status" style="font-size: 12px;"></p>
+                        </div>
+                    </div>
+                    <div class="chat-actions">
+                        <button id="clear-chat-btn" title="مسح المحادثة">🗑️</button>
+                    </div>
+                </div>
+
+                <div id="messages-box" class="messages-box"></div>
+
+                <div class="chat-input-area">
+                    <button id="mic-btn" title="تسجيل فويس">🎤</button>
+                    <input type="text" id="msg-input" placeholder="اكتب رسالة...">
+                    <button id="send-btn" title="إرسال">📤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="group-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>إنشاء مجموعة جديدة</h3>
+            <input type="text" id="group-name-input" placeholder="اسم المجموعة">
+            <p style="font-size: 13px; text-align: right; color: #667781;">اختر الأعضاء:</p>
+            <div id="members-select-list" class="members-select-list"></div>
+            <div style="display: flex; gap: 10px;">
+                <button id="create-group-confirm" style="background:#008069; color:white; border:none; padding:10px; border-radius:5px; flex:1; cursor:pointer;">إنشاء</button>
+                <button id="close-group-modal" style="background:#ccc; color:black; border:none; padding:10px; border-radius:5px; flex:1; cursor:pointer;">إلغاء</button>
+            </div>
+        </div>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, getDocs, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA2s5LbOPthYRzZeO6qNG-av-y0U7B7pQI",
+            authDomain: "mody-chat-624dd.firebaseapp.com",
+            projectId: "mody-chat-624dd",
+            storageBucket: "mody-chat-624dd.firebasestorage.app",
+            messagingSenderId: "244044755882",
+            appId: "1:244044755882:web:bf3fc7e21942a3dc9c71d3",
+            measurementId: "G-52Y1MLK9Q3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentUserData = null;
+        let selectedChatTarget = null;
+        let unsubscribeMessages = null;
+        let allUsers = [];
+        let allGroups = [];
+        let chatMetadata = {};
+        let heartbeatInterval = null;
+        let recordedAudioBlob = null;
+
+        const authScreen = document.getElementById('auth-screen');
+        const mainScreen = document.getElementById('main-screen');
+        const loginBtn = document.getElementById('login-btn');
+
+        window.onload = async () => {
+            const savedUid = localStorage.getItem('mody_chat_uid');
+            if (savedUid) {
+                try {
+                    const userDoc = await getDoc(doc(db, "users", savedUid));
+                    if (userDoc.exists()) {
+                        currentUserData = userDoc.data();
+                        startHeartbeat();
+                        initApp();
+                    } else {
+                        localStorage.removeItem('mody_chat_uid');
+                    }
+                } catch (e) {}
+            }
+        };
+
+        function startHeartbeat() {
+            if (!currentUserData) return;
+            const updatePresence = async () => {
+                try {
+                    await setDoc(doc(db, "users", currentUserData.uid), { online: true, lastSeen: Date.now() }, { merge: true });
+                } catch(e) {}
+            };
+            updatePresence();
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            heartbeatInterval = setInterval(updatePresence, 5000);
+        }
+
+        async function setOffline() {
+            if (currentUserData) {
+                try {
+                    if (heartbeatInterval) clearInterval(heartbeatInterval);
+                    await setDoc(doc(db, "users", currentUserData.uid), { online: false, lastSeen: 0 }, { merge: true });
+                } catch(e) {}
+            }
+        }
+
+        window.addEventListener('beforeunload', () => { setOffline(); });
+
+        loginBtn.onclick = async () => {
+            const name = document.getElementById('reg-name').value.trim();
+            const pass = document.getElementById('reg-pass').value.trim();
+            if (!name || !pass) return alert('⚠️ يرجى كتابة الاسم وكلمة المرور!');
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'جاري التحقق...';
+
+            try {
+                const usersSnap = await getDocs(collection(db, "users"));
+                let foundUser = null;
+                usersSnap.forEach(d => {
+                    const data = d.data();
+                    if (data && data.name && data.name.toLowerCase() === name.toLowerCase()) {
+                        foundUser = data;
+                    }
+                });
+
+                if (foundUser) {
+                    if (foundUser.password !== pass) {
+                        alert('❌ كلمة المرور غير صحيحة لهذا الاسم!');
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = 'دخول / إنشاء حساب';
+                        return;
+                    }
+                    currentUserData = foundUser;
+                } else {
+                    const uid = 'user_' + Date.now();
+                    const defaultAvatars = [
+                        "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+                        "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+                        "https://cdn-icons-png.flaticon.com/512/2922/2922510.png"
+                    ];
+                    const photoURL = defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
+                    currentUserData = { uid, name, password: pass, photoURL, online: true, lastSeen: Date.now() };
+                    await setDoc(doc(db, "users", uid), currentUserData);
+                }
+
+                localStorage.setItem('mody_chat_uid', currentUserData.uid);
+                startHeartbeat();
+                initApp();
+            } catch (err) {
+                alert('خطأ: ' + err.message);
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'دخول / إنشاء حساب';
+            }
+        };
+
+        function initApp() {
+            if (!currentUserData) return;
+            document.getElementById('my-name').textContent = currentUserData.name;
+            document.getElementById('my-avatar').src = currentUserData.photoURL;
+            authScreen.classList.add('hidden');
+            mainScreen.classList.remove('hidden');
+            loadUsersAndGroups();
+        }
+
+        document.getElementById('dropdown-logout').onclick = async () => {
+            await setOffline();
+            localStorage.removeItem('mody_chat_uid');
+            location.reload();
+        };
+
+        const menuDotsBtn = document.getElementById('menu-dots-btn');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+        menuDotsBtn.onclick = (e) => { e.stopPropagation(); dropdownMenu.classList.toggle('show'); };
+        window.onclick = () => { dropdownMenu.classList.remove('show'); };
+
+        function loadUsersAndGroups() {
+            onSnapshot(collection(db, "chats"), (snapshot) => {
+                chatMetadata = {};
+                snapshot.forEach(docSnap => { chatMetadata[docSnap.id] = docSnap.data(); });
+                updateSidebarList();
+            });
+
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                allUsers = [];
+                const now = Date.now();
+                snapshot.forEach(docSnap => {
+                    const u = docSnap.data();
+                    if (u && docSnap.id !== currentUserData.uid && u.name) {
+                        const isReallyOnline = u.online && u.lastSeen && (now - u.lastSeen < 10000);
+                        allUsers.push({ ...u, online: isReallyOnline });
+                    }
+                });
+                updateSidebarList();
+            });
+
+            onSnapshot(collection(db, "groups"), (snapshot) => {
+                allGroups = [];
+                snapshot.forEach(docSnap => {
+                    const g = docSnap.data();
+                    if (g && g.members && g.members.includes(currentUserData.uid) && !g.isClosed) {
+                        allGroups.push(g);
+                    }
+                });
+                updateSidebarList();
+            });
+        }
+        function updateSidebarList() {
+            const list = document.getElementById('users-list');
+            const searchInput = document.getElementById('search-user');
+            const searchTerm = searchInput && searchInput.value ? searchInput.value.toLowerCase() : '';
+            list.innerHTML = '';
+            let combinedItems = [];
+
+            allGroups.forEach(g => {
+                if (g.name && !g.name.toLowerCase().includes(searchTerm)) return;
+                const meta = chatMetadata[g.id] || {};
+                const unread = meta[`unread_${currentUserData.uid}`] || 0;
+                const lastTime = meta.lastMessageTime || g.lastMessageTime || 0;
+                combinedItems.push({ ...g, isGroup: true, unread, lastTime, lastText: meta.lastMessageText || `مجموعة (${g.members.length} أعضاء)` });
+            });
+
+            allUsers.forEach(u => {
+                if (u.name && !u.name.toLowerCase().includes(searchTerm)) return;
+                const chatId = [currentUserData.uid, u.uid].sort().join('_');
+                const meta = chatMetadata[chatId] || {};
+                const unread = meta[`unread_${currentUserData.uid}`] || 0;
+                const lastTime = meta.lastMessageTime || 0;
+                const statusText = meta.lastMessageText ? meta.lastMessageText : (u.online ? '🟢 متصل الآن' : '⚪ أوفلاين');
+                combinedItems.push({ ...u, isGroup: false, unread, lastTime, lastText: statusText });
+            });
+
+            combinedItems.sort((a, b) => (b.lastTime || 0) - (a.lastTime || 0));
+
+            combinedItems.forEach(item => {
+                const isSelected = item.isGroup ? (selectedChatTarget?.id === item.id) : (selectedChatTarget?.uid === item.uid);
+                const div = document.createElement('div');
+                div.className = `user-item ${isSelected ? 'active' : ''}`;
+                div.innerHTML = `
+                    <div class="user-item-left">
+                        <img class="avatar" src="${item.photoURL || ''}">
+                        <div class="user-item-info">
+                            <h4>${item.isGroup ? '👥 ' : ''}${item.name}</h4>
+                            <p>${item.lastText}</p>
+                        </div>
+                    </div>
+                    ${item.unread > 0 ? `<div class="unread-badge">${item.unread}</div>` : ''}
+                `;
+                div.onclick = () => openChatTarget(item, item.isGroup);
+                list.appendChild(div);
+            });
+        }
+
+        const searchInput = document.getElementById('search-user');
+        if (searchInput) searchInput.oninput = () => updateSidebarList();
+
+        const groupModal = document.getElementById('group-modal');
+        document.getElementById('open-group-modal').onclick = () => { groupModal.classList.remove('hidden'); renderMembersSelectList(); };
+        document.getElementById('close-group-modal').onclick = () => groupModal.classList.add('hidden');
+
+        function renderMembersSelectList() {
+            const listContainer = document.getElementById('members-select-list');
+            listContainer.innerHTML = '';
+            allUsers.forEach(u => {
+                listContainer.innerHTML += `
+                    <label class="member-checkbox">
+                        <input type="checkbox" value="${u.uid}">
+                        <span>${u.name}</span>
+                    </label>`;
+            });
+        }
+
+        document.getElementById('create-group-confirm').onclick = async () => {
+            const groupName = document.getElementById('group-name-input').value.trim();
+            if (!groupName) return alert('⚠️ اكتب اسم المجموعة!');
+            const checkboxes = document.querySelectorAll('#members-select-list input:checked');
+            let members = [currentUserData.uid];
+            checkboxes.forEach(cb => members.push(cb.value));
+
+            const groupId = 'group_' + Date.now();
+            const groupData = {
+                id: groupId,
+                name: groupName,
+                admin: currentUserData.uid,
+                admins: [currentUserData.uid],
+                members: members,
+                isGroup: true,
+                isClosed: false,
+                photoURL: "https://cdn-icons-png.flaticon.com/512/1665/1665680.png",
+                lastMessageTime: Date.now()
+            };
+            await setDoc(doc(db, "groups", groupId), groupData);
+            groupModal.classList.add('hidden');
+            alert('تم إنشاء المجموعة بنجاح وأنت الآدمن الأساسي! 🎉');
+        };
+
+        async function openChatTarget(target, isGroup) {
+            selectedChatTarget = { ...target, isGroup };
+            document.getElementById('main-screen').classList.add('chat-open');
+            document.getElementById('no-chat-selected').classList.add('hidden');
+            document.getElementById('active-chat').classList.remove('hidden');
+            
+            document.getElementById('chat-user-name').textContent = target.name;
+            document.getElementById('chat-user-avatar').src = target.photoURL;
+
+            let adminControlsHTML = '';
+            if (isGroup) {
+                const gSnap = await getDoc(doc(db, "groups", target.id));
+                if (gSnap.exists()) {
+                    const gData = gSnap.data();
+                    selectedChatTarget = { ...gData, isGroup: true };
+                    const admins = gData.admins || [gData.admin];
+                    if (admins.includes(currentUserData.uid)) {
+                        adminControlsHTML = `
+                            <div style="margin-top:4px; font-size:11px; display:flex; gap:5px;">
+                                <button onclick="addMemberToGroup('${target.id}')" style="background:#008069; color:#fff; border:none; padding:2px 5px; border-radius:3px; cursor:pointer;">➕ إضافة</button>
+                                <button onclick="removeMemberFromGroup('${target.id}')" style="background:#f0ad4e; color:#fff; border:none; padding:2px 5px; border-radius:3px; cursor:pointer;">➖ طرد</button>
+                                <button onclick="closeGroup('${target.id}')" style="background:#d9534f; color:#fff; border:none; padding:2px 5px; border-radius:3px; cursor:pointer;">🔒 قفل</button>
+                            </div>`;
+                    }
+                }
+            }
+
+            document.getElementById('chat-user-status').innerHTML = isGroup ? `مجموعة - ${target.members.length} أعضاء ${adminControlsHTML}` : (target.online ? 'متصل الآن' : 'غير متصل');
+
+            const chatId = isGroup ? target.id : [currentUserData.uid, target.uid].sort().join('_');
+            await setDoc(doc(db, "chats", chatId), { [`unread_${currentUserData.uid}`]: 0 }, { merge: true });
+
+            if (unsubscribeMessages) unsubscribeMessages();
+            const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"));
+            
+            unsubscribeMessages = onSnapshot(q, (snap) => {
+                const box = document.getElementById('messages-box');
+                box.innerHTML = '';
+                snap.forEach(docSnap => {
+                    const m = docSnap.data();
+                    const isMe = m.senderId === currentUserData.uid;
+                    let content = m.text;
+                    if (m.type === 'audio') content = `<audio controls src="${m.fileData}"></audio>`;
+
+                    box.innerHTML += `
+                        <div class="msg ${isMe ? 'me' : 'other'}">
+                            ${!isMe && isGroup ? `<strong style="color:#008069; display:block; font-size:11px;">${m.senderName}</strong>` : ''}
+                            ${content}
+                        </div>`;
+                });
+                box.scrollTop = box.scrollHeight;
+            });
+        }
+
+        window.closeGroup = async (groupId) => {
+            if (confirm('⚠️ هل أنت متأكد من قفل هذا الجروب نهائياً؟')) {
+                await updateDoc(doc(db, "groups", groupId), { isClosed: true });
+                alert('تم قفل الجروب بنجاح.');
+                location.reload();
+            }
+        };
+
+        window.addMemberToGroup = async (groupId) => {
+            const nameAdd = prompt("اكتب اسم المستخدم المراد إضافته:");
+            if (!nameAdd) return;
+            let foundUid = null;
+            allUsers.forEach(u => { if (u.name.toLowerCase() === nameAdd.toLowerCase()) foundUid = u.uid; });
+            if (!foundUid) return alert('❌ المستخدم غير موجود!');
+
+            const gRef = doc(db, "groups", groupId);
+            const gSnap = await getDoc(gRef);
+            if (gSnap.exists()) {
+                let members = gSnap.data().members;
+                if (!members.includes(foundUid)) {
+                    members.push(foundUid);
+                    await updateDoc(gRef, { members });
+                    alert('تمت إضافة العضو بنجاح! 🚀');
+                } else {
+                    alert('العضو موجود بالفعل في الجروب.');
+                }
+            }
+        };
+
+        window.removeMemberFromGroup = async (groupId) => {
+            const nameRem = prompt("اكتب اسم العضو المراد طرده من الجروب:");
+            if (!nameRem) return;
+            const gRef = doc(db, "groups", groupId);
+            const gSnap = await getDoc(gRef);
+            if (gSnap.exists()) {
+                let data = gSnap.data();
+                let members = data.members;
+                let targetUid = null;
+                
+                allUsers.forEach(u => { if (u.name.toLowerCase() === nameRem.toLowerCase()) targetUid = u.uid; });
+                if (!targetUid && nameRem === currentUserData.name) targetUid = currentUserData.uid;
+
+                if (!targetUid) return alert('❌ المستخدم غير موجود في القائمة!');
+                if (targetUid === data.admin) return alert('⚠️ لا يمكنك طرد مؤسس الجروب (الآدمن الأساسي)!');
+
+                members = members.filter(id => id !== targetUid);
+                await updateDoc(gRef, { members });
+                alert('تم طرد العضو بنجاح 🚫');
+                location.reload();
+            }
+        };
+
+        let mediaRecorder;
+        let audioChunks = [];
+        const micBtn = document.getElementById('mic-btn');
+
+        micBtn.onclick = async () => {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                    mediaRecorder.onstop = () => {
+                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        alert('🎤 تم تسجيل الفويس بنجاح! اضغط الآن على زر الإرسال (📤) لإرساله.');
+                        stream.getTracks().forEach(t => t.stop());
+                    };
+                    mediaRecorder.start();
+                    micBtn.classList.add('recording');
+                    micBtn.textContent = '⏹️';
+                } catch (err) {
+                    alert('يرجى السماح بالوصول للميكروفون');
+                }
+            } else if (mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                micBtn.classList.remove('recording');
+                micBtn.textContent = '🎤';
+            }
+        };
+
+        document.getElementById('send-btn').onclick = async () => {
+            if (!selectedChatTarget) return;
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+
+            if (recordedAudioBlob) {
+                const reader = new FileReader();
+                reader.readAsDataURL(recordedAudioBlob);
+                reader.onloadend = async () => {
+                    await sendMessageToDB({ type: 'audio', fileData: reader.result });
+                    recordedAudioBlob = null;
+                };
+                return;
+            }
+
+            if (!text) return;
+            await sendMessageToDB({ type: 'text', text });
+        };
+
+        document.getElementById('msg-input').onkeypress = (e) => {
+            if (e.key === 'Enter') document.getElementById('send-btn').click();
+        };
+
+        async function sendMessageToDB(payload) {
+            const chatId = selectedChatTarget.isGroup ? selectedChatTarget.id : [currentUserData.uid, selectedChatTarget.uid].sort().join('_');
+            
+            try {
+                await addDoc(collection(db, "chats", chatId, "messages"), {
+                    senderId: currentUserData.uid,
+                    senderName: currentUserData.name,
+                    createdAt: Date.now(),
+                    read: false,
+                    ...payload
+                });
+
+                let metaUpdate = {
+                    lastMessageTime: Date.now(),
+                    lastMessageText: payload.text || '🎤 رسالة صوتية'
+                };
+
+                if (selectedChatTarget.isGroup) {
+                    selectedChatTarget.members.forEach(memberId => {
+                        if (memberId !== currentUserData.uid) {
+                            metaUpdate[`unread_${memberId}`] = increment(1);
+                        }
+                    });
+                } else {
+                    metaUpdate[`unread_${selectedChatTarget.uid}`] = increment(1);
+                }
+
+                await setDoc(doc(db, "chats", chatId), metaUpdate, { merge: true });
+                
+                const input = document.getElementById('msg-input');
+                if (input) input.value = '';
+            } catch (err) {
+                alert('❌ خطأ في الإرسال: ' + err.message);
+            }
+        }
+
+        document.getElementById('clear-chat-btn').onclick = async () => {
+            if (!selectedChatTarget) return;
+            if (confirm('هل أنت متأكد من مسح هذه المحادثة؟')) {
+                const chatId = selectedChatTarget.isGroup ? selectedChatTarget.id : [currentUserData.uid, selectedChatTarget.uid].sort().join('_');
+                const msgRef = collection(db, "chats", chatId, "messages");
+                const snapshot = await getDocs(msgRef);
+                const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+                await Promise.all(deletePromises);
+                await setDoc(doc(db, "chats", chatId), { lastMessageText: "", lastMessageTime: 0 }, { merge: true });
+                alert('تم مسح المحادثة بنجاح!');
+            }
+        };
+    </script>
+</body>
+</html>
